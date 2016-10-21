@@ -21,6 +21,8 @@ class Word2Vec:
         self.session = session
         if for_training:
             self.init_for_training(*args, **kw)
+        else:
+            self.init_for_evaluation(*args, **kw)
 
 
     def init_for_training(
@@ -84,6 +86,21 @@ class Word2Vec:
             "Analogy accuracy", self.tf_analogy_accuracy)
 
 
+    def init_for_evaluation(self, training_results_path, emb_dim = 200):
+        self.training_results_path = training_results_path
+        # Load word frequency.
+        words, word_freq = Word2Vec.load_word_frequency(
+            os.path.join(training_results_path, "vocab.txt"))
+        self.setup_with_word_frequency(words, word_freq)
+        # Setup computation graph.
+        self.setup_main_graph(emb_dim)
+        # Load training results.
+        self.tf_saver = tf.train.Saver()
+        self.tf_saver.restore(self.session, os.path.join(training_results_path, "model.ckpt"))
+        # Build analogy evaluation graph.
+        self.build_analogy_evaluation_graph()
+
+
     def setup_with_word_frequency(self, words, word_freq):
         assert len(words) == len(word_freq)
         # Given the words and word frequency, do some common setup.
@@ -101,6 +118,19 @@ class Word2Vec:
         with open(filename, 'w') as fp:
             for w, freq in zip(words, word_freq):
                 fp.write("%s:%d\n" % (w, freq))
+
+
+    @staticmethod
+    def load_word_frequency(filename):
+        words = []
+        word_freq = []
+        with open(filename, 'r') as fp:
+            for line in fp:
+                s = line.split(':')
+                assert len(s) == 2
+                words.append(s[0])
+                word_freq.append(int(s[1].strip()))
+        return words, word_freq
 
 
     def setup_main_graph(self, emb_dim):
@@ -293,7 +323,3 @@ class Word2Vec:
                 self.tf_analogy_b: analogy[:, 1],
                 self.tf_analogy_c: analogy[:, 2],
             })
-
-
-    def load_checkpoint(self, save_path):
-        self.tf_saver.restore(self.session, os.path.join(save_path, "model.ckpt"))
