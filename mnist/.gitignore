@@ -1,3 +1,4 @@
 /MNIST_data
-/checkpoint
-/frozen_graph_viz
+/low_level/checkpoint
+/low_level/frozen_graph_viz
+/low_level/trained-models
